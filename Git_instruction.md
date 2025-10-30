@@ -1,4 +1,4 @@
-### Начальная настройка GitHub и Git
+https://github.com/VASPA06/305_DB_Parkaev_VA.git### Начальная настройка GitHub и Git
 * Зарегистрироваться на GitHub. Сделать форк своего репозитория  из https://github.com/andpop-mrsu.
 * Установить и выполнить первичную настройку Git на локальной машине (`git config --global user.name`, `git config --global user.email`).
 * Склонировать "форкнутый" репозиторий из своего профиля GitHub на локальную машину (`git clone`). При этом удаленный репозиторий в вашем профиле будет привязан под именем *origin*.
