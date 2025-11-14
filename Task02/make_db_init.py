@@ -96,53 +96,60 @@ def _process_users_file(f, file_path, table_name, table_info):
             ]
             f.write(f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(values)});\n")
 
+
 def _process_csv_file(f, file_path, table_name, table_info):
-    """Обработка CSV файлов"""
-    with open(file_path, 'r', encoding='utf-8') as csv_file:
-        reader = csv.reader(csv_file)
-        header = next(reader)
-        column_names = [col[0] for col in table_info['columns']]
-        for row_num, row in enumerate(reader, start=2):
-            if not row:
-                continue
-            values = []
-            if table_name == 'movies':
-                if len(row) < 2:
-                    print(f"Пропуск строки {row_num} в {table_info['file']}: недостаточно столбцов ({len(row)})")
+        with open(file_path, 'r', encoding='utf-8') as csv_file:
+            reader = csv.reader(csv_file)
+            header = next(reader)
+            column_names = [col[0] for col in table_info['columns']]
+            for row_num, row in enumerate(reader, start=2):
+                if not row:
                     continue
-                movie_id = row[0]
-                genres = row[-1]
-                full_title = ','.join(row[1:-1])
-                if full_title.startswith('"') and full_title.endswith('"'):
-                    full_title = full_title[1:-1]
-                clean_title = full_title.strip()
-                year = 'NULL'
-                match = re.search(r'\s*\((\d{4})\)$', full_title)
-                if match:
-                    year = match.group(1)
-                    clean_title = full_title[:match.start()].strip()
-                values.append(movie_id)
-                values.append(f"'{clean_title.replace("'", "''")}'")
-                values.append(year)
-                values.append(f"'{genres.replace("'", "''")}'")
-            elif table_name == 'ratings':
-                rating_id = row_num - 1
-                user_id, movie_id, rating, timestamp = row
-                values.extend([str(rating_id), user_id, movie_id, rating, timestamp])
-            elif table_name == 'tags':
-                if len(row) != 4:
-                    print(f"Пропуск строки {row_num} в {table_info['file']}: {len(row)} значений, ожидается 4")
-                    continue
-                tag_id = row_num - 1
-                user_id, movie_id, tag, timestamp = row
-                timestamp = timestamp.replace('%', '')
-                values.extend([str(tag_id), user_id, movie_id, f"'{tag.replace("'", "''")}'", timestamp])
-            if len(values) != len(column_names):
-                print(
-                    f"Пропуск строки {row_num} в {table_info['file']}: {len(values)} значений для {len(column_names)} колонок")
-                continue
-            if values:
-                f.write(
-                    f"INSERT INTO {table_name} ({', '.join(map(str, column_names))}) VALUES ({', '.join(map(str, values))});\n")
+
+                values = []
+
+                if table_name == 'movies':
+                    # Пропуск совсем битых строк
+                    if len(row) < 2:
+                        continue
+
+                    movie_id = row[0]
+
+                    # Если колонок 3 и больше, берем жанры из 3-й (индекс 2)
+                    if len(row) >= 3:
+                        full_title = row[1]
+                        genres = row[2]
+                    else:  # Если колонок 2, то жанров нет
+                        full_title = row[1]
+                        genres = '(no genres listed)'
+                    full_title = full_title.strip()
+                    clean_title = full_title
+                    year = 'NULL'
+                    match = re.search(r'\s*\((\d{4}(?:[-–]\d{4})?)\)\s*$', full_title)
+                    if match:
+                        year_string = match.group(1)
+                        year = year_string[:4]
+                        clean_title = full_title[:match.start()].strip()
+                    values.extend([
+                        movie_id,
+                        f"'{clean_title.replace("'", "''")}'",
+                        year,
+                        f"'{genres.replace("'", "''")}'"
+                    ])
+                elif table_name == 'ratings':
+                    if len(row) != 4: continue
+                    rating_id = row_num - 1
+                    user_id, movie_id, rating, timestamp = row
+                    values.extend([str(rating_id), user_id, movie_id, rating, timestamp])
+                elif table_name == 'tags':
+                    if len(row) != 4: continue
+                    tag_id = row_num - 1
+                    user_id, movie_id, tag, timestamp = row
+                    values.extend([str(tag_id), user_id, movie_id, f"'{tag.replace("'", "''")}'", timestamp])
+                if values and len(values) == len(column_names):
+                    f.write(
+                        f"INSERT INTO {table_name} ({', '.join(column_names)}) "
+                        f"VALUES ({', '.join(map(str, values))});\n"
+                    )
 if __name__ == '__main__':
     generate_sql_script()
